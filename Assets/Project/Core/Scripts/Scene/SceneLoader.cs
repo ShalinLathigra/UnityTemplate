@@ -75,35 +75,3 @@ namespace Project.Core.Scene
         }
     }
 }
-
-/*
- 
-TODO: modify SceneLoader to use ^ to determine whether it is important to blow away a scene or not.
-
-so the game starts, we say "CoreSceneManager, please play the game menu + load any immediate linked scenes."
-CSM then goes, loads game menu if not already loaded, plays it, then background loads any other scenes using load async
-
-Scenes are only unloaded when the current anchor no longer has use for them.
-Scenes are loaded if needed and not part of the existing set
-Scenes will register any available services with the service locator to expose api calls to whoever requires them
-
-    i.e. Dialogue.
-
-Main menu loads just itself, stores a sceneData ref under the play button keyed to level one (anchor scene)
-
-    When play is pressed,
-    ServLoc.LoadScene(new scene)
-    Scenetransition.Hide(transition type) [This should also lock player input temporarily]
-    Check if new scene already loaded, if not, load it in.
-    Look through available scenes, for each one, if not in required scenes, remove it
-    look through required scenes, if not in available, add it         
-    When all complete, SceneTransition.Show(TransitionType) [This should also unlock player input]
-
-    Now, new scene is loaded and activated, dialogue scene is present and registered, but not out of sight
-    Next step is to say "ServLoc".Get(DialoguePlayer).play(Some dialogue scriptable object)
-
-Other more interesting projects may need to preload scenes in some way so that you can seamlessly move between them
- 
- TODO: revisit below
- have each sceneRef store a render texture + the scene controller, after a transition, slot this in, then go. 
- */
