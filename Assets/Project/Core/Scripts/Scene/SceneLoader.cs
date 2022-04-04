@@ -1,10 +1,11 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Project.Core.Logger;
 using Project.Core.ScriptableObjects;
 using Project.Core.Service;
-using Project.Core.Tasks;
+using UniRx;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -13,94 +14,64 @@ namespace Project.Core.Scene
     public interface ISceneLoader : ICoreService
     {
 
-        public void Load(SceneData scene);
-        public CoreTask LoadSingleAsync(SceneData scene);
-        public CoreTask UnloadSingle(SceneData scene);
+        public IObservable<Unit> Unload(IEnumerable<SceneField> sceneGroup);
+        public IObservable<Unit> Load(SceneGroup sceneGroup);
     }
-    
+
     public class SceneLoader : ISceneLoader
     {
         readonly ICoreLogger _logger;
-        readonly Dictionary<SceneData, CoreTask> _taskDict;
 
         public SceneLoader(ICoreLogger logger)
         {
             _logger = logger;
-            _taskDict = new Dictionary<SceneData, CoreTask>();
         }
 
         /// <summary>
-        /// Load in the scene and childScenes sequentially
-        /// Load in asyncChildScenes after
+        /// Load in scene and any children. No nesting.
         /// </summary>
-        /// <param name="sceneData"> SceneData to Load </param>
-        public void Load(SceneData sceneData)
-        {
-            LoadSingleAsync(sceneData).Start();
-            foreach (SceneData s in sceneData.childScenes) LoadSingleAsync(s).Start();
-        }
-
-        /// <summary>
-        /// Load in scene + asynchronously. This will only process ONE scene.
-        /// </summary>
-        /// <param name="sceneData"> Data to load </param>
-        /// <param name="autostart"> start loading immediately? </param>
-        public CoreTask LoadSingleAsync(SceneData sceneData)
-        {
-            if (_taskDict.ContainsKey(sceneData)) return _taskDict[sceneData];
-            CoreTask task = new CoreTask(LoadSceneAsync(sceneData), false);
-            _taskDict.Add(sceneData, task);
-            task.Finished += manual => _taskDict.Remove(sceneData);
-            return task;
-            // for this and all direct children
+        /// <param name="sceneGroup">Contains a set of scenes (not necessarily unique)</param>
+        /// <returns></returns>
+        public IObservable<Unit> Load(SceneGroup sceneGroup)
+        { 
+            return Observable.FromCoroutine(() => LoadSceneGroup(sceneGroup));
         }
 
         /// <summary>
         /// Will unload exactly one scene. to do multiple, must call it once for each.
         /// </summary>
-        /// <param name="sceneData"> Data to unload </param>
-        public CoreTask UnloadSingle(SceneData sceneData)
+        /// <param name="sceneGroup"> Data to unload </param>
+        /// <param name="oldScenes">Scenes to remove</param>
+        public IObservable<Unit> Unload(IEnumerable<SceneField> oldScenes)
         {
-            return new CoreTask(UnloadSceneAsync(sceneData));
+            return Observable.FromCoroutine(() => UnloadScenes(oldScenes));
         }
 
         /// <summary>
         /// Coroutines actually used to do the async loading
         /// </summary>
-        IEnumerator LoadSceneAsync(SceneData sceneData)
+        IEnumerator LoadSceneGroup(SceneGroup sceneGroup)
         {
-            _logger.Info("Loading Async: " + sceneData.SceneName);
-            if (sceneData.Loaded)
-                yield break;
-            AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(sceneData.SceneName, LoadSceneMode.Additive);
-            
-            while (!asyncLoad.isDone)
-            {
-                yield return null;
-            }
+            IEnumerable<AsyncOperation> asyncOperations = 
+                sceneGroup.childScenes.Where(s => !s.Loaded)
+                    .Select( s => SceneManager.LoadSceneAsync(s.SceneName, LoadSceneMode.Additive));
 
-            sceneData.scene = SceneManager.GetSceneByName(sceneData.SceneName);
-            _logger.Info("Loaded Async: " + sceneData.SceneName);
+            IEnumerable<AsyncOperation> asyncOperationsArray =
+                asyncOperations as AsyncOperation[] ?? asyncOperations.ToArray();
+            yield return new WaitUntil(() => asyncOperationsArray.Sum(s => s.isDone ? 0 : 1) <= 0);
         }
         
-        IEnumerator UnloadSceneAsync(SceneData sceneData)
+        IEnumerator UnloadScenes(IEnumerable<SceneField> oldScenes)
         {
-            _logger.Info("Unloading Scene: " + sceneData.SceneName);
-            if (!sceneData.Loaded) yield break;
-            AsyncOperation asyncLoad = SceneManager.UnloadSceneAsync(sceneData.SceneName);
-            while (!asyncLoad.isDone)
-            {
-                yield return null;
-            }
-            _logger.Info("Unloaded Scene: " + sceneData.SceneName);
-        }
-        
-        /// <summary>
-        /// Print any state information of the SceneLoader
-        /// </summary>
-        public void PrintStatus()
-        {
-            _logger.Info("SceneLoader Active");
+            _logger.Info(oldScenes.Count());
+            IEnumerable<AsyncOperation> asyncOperations = 
+                oldScenes.Where(s => s.Loaded)
+                    .Select(s => SceneManager.UnloadSceneAsync(s.SceneName));
+            
+            IEnumerable<AsyncOperation> asyncOperationsArray =
+                asyncOperations as AsyncOperation[] ?? asyncOperations.ToArray();
+            yield return new WaitUntil(() => asyncOperationsArray.Sum(s => s.isDone ? 0 : 1) <= 0);
+            
         }
     }
 }

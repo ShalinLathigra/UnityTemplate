@@ -16,6 +16,7 @@ namespace Project.Core.Scene
         [SerializeField] string sceneName = "";
 
         public string SceneName => sceneName;
+        public bool Loaded => SceneManager.GetSceneByName(SceneName).isLoaded;
     }
 #if UNITY_EDITOR
     [CustomPropertyDrawer(typeof(SceneField))]

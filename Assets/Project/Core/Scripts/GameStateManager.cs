@@ -1,26 +1,31 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using Project.Core.Logger;
 using Project.Core.Scene;
 using Project.Core.ScriptableObjects;
 using Project.Core.Service;
-using Project.Core.Tasks;
+using UniRx;
 using UnityEngine;
 
 namespace Project.Core
 {
     public interface IGameStateManager : ICoreService
     {
-        public void MoveToScene(AnchorSceneData sceneData);
+        public void MoveToScene(AnchorSceneGroup sceneGroup);
     }
     
     
     public class GameStateManager : MonoBehaviour, IGameStateManager
     {
-        [SerializeField] AnchorSceneData mainMenu;
+        [SerializeField] AnchorSceneGroup mainMenu;
         [SerializeField] CoreLoggerMono logger;
         [SerializeField] SceneDataLibrary library;
         ISceneLoader _sceneLoader;
 
-        AnchorSceneData _currentScene;
+        AnchorSceneGroup _currentScene;
 
         void Awake()
         {
@@ -32,42 +37,40 @@ namespace Project.Core
         {
             if (!ServiceLocator.Instance.TryGet(out _sceneLoader))
                 logger.Fatal("No SceneLoader Present");
-            CoreTask loadSingleAsync = _sceneLoader.LoadSingleAsync(mainMenu);
-            loadSingleAsync.Finished += manual =>
-            {
-                MoveToScene(mainMenu);
-            }; 
-            loadSingleAsync.Start();
+            MoveToScene(mainMenu);
         }
-
-        public void PrintStatus()
+        
+        public async void MoveToScene(AnchorSceneGroup sceneGroup)
         {
-            logger.Info("Ready!");
-        }
-
-        // Node, this is just used to transition between larger game states. Stores and stuff will be handled within
-        // the levels, will ask the world to handle shit though.
-        public void MoveToScene(AnchorSceneData sceneData)
-        {
-            // in coroutine: start scene load, do outro, then play intro when ready.
-            // should be in a coroutine
+            // Load new scene immediately
+            IObservable<Unit> loadObservable = _sceneLoader.Load(sceneGroup);
+            
+            // Play outro optionally
             if (_currentScene != default)
             {
                 logger.Info("Playing Outro Probably");
-                _currentScene.controller.PlayOutro();
+                // delay unt
+                await _currentScene.PlayOutro();
+            }
+            
+            // Ensure new scene is loaded
+            await loadObservable;
+            
+            // begin unloading of old scenes
+            // first, get scenes that are in old list and not old list
+            if (_currentScene != default)
+            {
+                List<SceneField> newScenes = sceneGroup.childScenes;
+                List<SceneField> oldScenes = _currentScene.childScenes;
+                IEnumerable<SceneField> targetList = newScenes.Where(s => !oldScenes.Contains(s));
+                
+                // don't need to track unloading yet
+                _sceneLoader.Unload(targetList);
             }
 
-            _currentScene = sceneData;
-            bool hasAnim = false;
-            foreach (GameObject obj in sceneData.scene.GetRootGameObjects())
-            {
-                hasAnim = obj.TryGetComponent(out SceneController controller);
-                if (!hasAnim) continue;
-                _currentScene.controller = controller;
-                break;
-            }
-            if (hasAnim)
-                _currentScene.controller.PlayIntro();
+            // update current scene
+            _currentScene = sceneGroup;
+            await _currentScene.PlayIntro();
         }
     }
 }

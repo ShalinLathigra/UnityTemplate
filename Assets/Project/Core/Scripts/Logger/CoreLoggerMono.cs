@@ -33,5 +33,9 @@ namespace Project.Core.Logger
         public void Warning(object message) => _logger.Warning(message);
         public void Error(object message) => _logger.Error(message);
         public void Fatal(object message) => _logger.Fatal(message);
+        public void PrintStatus()
+        {
+            Info("Mono Status Checkin");
+        }
     }
 }

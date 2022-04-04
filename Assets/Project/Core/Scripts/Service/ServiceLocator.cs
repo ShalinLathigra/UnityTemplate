@@ -5,7 +5,6 @@ namespace Project.Core.Service
 {
     public interface ICoreService
     {
-        void PrintStatus();
     }
 
 
@@ -83,15 +82,6 @@ namespace Project.Core.Service
             _logger.Error("Key " + key + " Does not exist");
             return false;
 
-        }
-
-        public void PrintStatus()
-        {
-            _logger.Info("Service Locator is Ready!");
-            foreach (ICoreService service in _services.Values)
-            {
-                service.PrintStatus();
-            }
         }
     }
 }

@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using Project.Core.Service;
 using Sirenix.OdinInspector;
@@ -9,22 +8,28 @@ namespace Project.Core.ScriptableObjects
 {
     public interface ISceneLibrary : ICoreService
     {
-        public void GetScene(string sceneName, out SceneData scene);
+        public bool GetGroup(string targetGroupName, out SceneGroup scene);
     }
-    // Not used at runtime, only in editor. Need to create an editorWindow for these that will let you search names
+    
+    /// <summary>
+    /// Actual object used to store all the available sceneData SOs in one convenient place.
+    /// Will want to create an EditorWindow for this eventually to ease navigation.
+    /// Not used by actual game, just by me. 
+    /// </summary>
     [CreateAssetMenu(menuName = "SceneLoader/Create SceneLibrary", fileName = "SceneLibrary", order = 0)]
     public class SceneDataLibrary : SerializedScriptableObject, ISceneLibrary
     {
-        [SerializeField][ShowInInspector] List<SceneData> sceneList;
+        [SerializeField][ShowInInspector] List<SceneGroup> sceneList;
 
-        public void GetScene(string sceneName, out SceneData scene)
+        public bool GetGroup(string targetGroupName, out SceneGroup scene)
         {
-            foreach (SceneData s in sceneList.Where(s => s.SceneName == sceneName))
+            foreach (SceneGroup s in sceneList.Where(s => s.name == targetGroupName))
             {
                 scene = s;
-                return;
+                return true;
             }
             scene = default;
+            return false;
         }
 
         public void PrintStatus()

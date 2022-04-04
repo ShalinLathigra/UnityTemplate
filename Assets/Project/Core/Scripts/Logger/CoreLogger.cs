@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Diagnostics;
+using Project.Core.Service;
 
 namespace Project.Core.Logger
 {
-    public interface ICoreLogger
+    public interface ICoreLogger : ICoreService
     {
         void Info(object message);
         void Warning(object message);
@@ -11,6 +12,10 @@ namespace Project.Core.Logger
         void Fatal(object message);
     }
     
+    /// <summary>
+    /// Class used in some places to define logging parameters in one convenient object
+    /// Allows me to 
+    /// </summary>
     public class CoreLogger : ICoreLogger
     {
         readonly string _prefix;
@@ -20,7 +25,13 @@ namespace Project.Core.Logger
         readonly bool _active;
         readonly int _separation;
         
-        public CoreLogger(string prefix, string separator="::", bool printCallingFunction=false, bool verbose=false, bool active=false, int separation=1)
+        public CoreLogger(
+            string prefix, 
+            string separator="::", 
+            bool printCallingFunction=false, 
+            bool verbose=false, 
+            bool active=false, 
+            int separation=1)
         {
             _prefix = prefix;
             _separator = separator;
@@ -30,6 +41,7 @@ namespace Project.Core.Logger
             _separation = separation;
         }
 
+        // ReSharper disable Unity.PerformanceAnalysis
         /// <summary>
         /// Wrapper for debug.log, will modify message based on other logger parameters
         /// </summary>
@@ -100,6 +112,11 @@ namespace Project.Core.Logger
             className = type is { } ? type.Name : "";
             funcName = stackTrace.GetFrame(index: _separation + 2).GetMethod().Name;
             return type is { };
+        }
+
+        public void PrintStatus()
+        {
+            Info("Status check");
         }
     }
 }

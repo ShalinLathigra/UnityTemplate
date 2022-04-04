@@ -459,9 +459,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c1c4a07b6c0f72041a171b499d496dc8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  origin: {fileID: 11400000, guid: ed474aa2142d4e44898e940f2bd22675, type: 2}
   director: {fileID: 1565845114}
   intro: {fileID: 11400000, guid: 3d9df7b6cee97754f94292df8301f2ad, type: 2}
   outro: {fileID: 11400000, guid: c7450bce2b36fd349ac3a14ee3eaa673, type: 2}
+  animating: 0
 --- !u!1 &1839295651
 GameObject:
   m_ObjectHideFlags: 0
